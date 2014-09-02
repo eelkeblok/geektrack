@@ -6,6 +6,7 @@ import sys
 import urllib.parse
 
 import BaseBackend
+import TimeEntry
 
 # Define commands to
 # - Start a timer (make entry in log)
@@ -87,8 +88,20 @@ def commandReport(argv, config):
     backend = BaseBackend.BaseBackend.getBackend(argv, config)
     time_entries = backend.getTimeEntries(datetime.datetime.today())
 
+    time_entries.sort(key=lambda entry: entry.booked_on)
+
+    row_format = "{:<20} {:>2d}:{:02d} {:<50}"
+
+    previous_date = None
+    day_total = datetime.timedelta(0)
     for entry in time_entries:
-        print(entry)
+        if entry.booked_on != previous_date:
+            print(entry.booked_on.strftime('%a %d %b %Y'))
+            previous_date = entry.booked_on
+        total_seconds = int(entry.duration.total_seconds())
+        hours, remainder = divmod(total_seconds,60*60)
+        minutes, seconds = divmod(remainder,60)
+        print(row_format.format(entry.ticket.identifier, hours, minutes, entry.description))
 
     return
 
