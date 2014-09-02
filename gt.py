@@ -91,19 +91,31 @@ def commandReport(argv, config):
     time_entries.sort(key=lambda entry: entry.booked_on)
 
     row_format = "{:<20} {:>2d}:{:02d} {:<50}"
-
+    bookable = [4,8,8,8,8,0,0]
     previous_date = None
     day_total = datetime.timedelta(0)
     for entry in time_entries:
         if entry.booked_on != previous_date:
+
+            # If this isn't the first iteration, print the day's total
+            if previous_date != None:
+                print(daySummary(previous_date, day_total, bookable))
+                print("")
+                day_total = datetime.timedelta(0)
+
             print(entry.booked_on.strftime('%a %d %b %Y'))
             previous_date = entry.booked_on
+
         total_seconds = int(entry.duration.total_seconds())
         hours, remainder = divmod(total_seconds,60*60)
         minutes, seconds = divmod(remainder,60)
+        day_total = day_total + entry.duration
         print(row_format.format(entry.ticket.identifier, hours, minutes, entry.description))
 
     return
+
+def daySummary(date, total, bookable):
+    return ""
 
 if len(sys.argv) == 1:
     print("Please supply a valid command.")
