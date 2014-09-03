@@ -117,7 +117,7 @@ def commandReport(argv, config):
                 print("")
                 day_total = datetime.timedelta(0)
 
-            print(entry.booked_on.strftime('%a %d %b %Y'))
+            print(bold(entry.booked_on.strftime('%a %d %b %Y')))
             previous_date = entry.booked_on
 
         day_total = day_total + entry.duration
