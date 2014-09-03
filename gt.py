@@ -1,5 +1,6 @@
 #! /usr/bin/env python3
 import argparse
+import calendar
 import configparser
 import datetime
 import pprint as pp
@@ -95,7 +96,10 @@ def commandReport(command, args, config):
     backend_config = config['backend_' + selected_backend]
     backend = BaseBackend.BaseBackend.getBackend(backend_config)
 
-    fromdate = todate = datetime.datetime.today()
+    # Turn the command line arguments into from and to dates. Suffice to say, if
+    # these things are mixed in illogical ways, the results are undetermined.
+    # (I.e. it makes no sense to set both --yesterday and a --from date)
+    fromdate = todate = today = datetime.datetime.today()
 
     if args.fromstring != None:
         fromdate = datetime.datetime.strptime(args.fromstring, '%Y/%m/%d')
@@ -108,6 +112,28 @@ def commandReport(command, args, config):
     # single date in the past just by setting the todate
     if todate < fromdate:
         fromdate = todate
+
+    # On to the convenience values
+    if args.yesterday:
+        oneday = datetime.timedelta(1)
+        yesterday = today - oneday
+        fromdate = todate = yesterday
+
+    # This month
+    if args.thismonth:
+        todate = today
+        fromdate = todate.replace(day=1)
+
+    # Last month
+    if args.lastmonth:
+        month = today.month - 1
+        year = today.year
+        if month == 0:
+            month = 12
+            year = year - 1
+        (weekday, numdays) = calendar.monthrange(year, month)
+        fromdate = datetime.datetime(year, month, 1)
+        todate = datetime.datetime(year, month, numdays)
 
     time_entries = backend.getTimeEntries(fromdate, todate)
 
@@ -204,11 +230,21 @@ subparsers = parser.add_subparsers(help='sub-command help')
 
 # Create the parser for the report command
 parser_report = subparsers.add_parser('report', description='Run reports against a backend')
-parser_report.add_argument('--verbose', dest='verbose', action='store_const',
+parser_report.add_argument('--verbose', action='store_const',
                    const=True, default=False,
                    help='Show details on individual time entries')
 parser_report.add_argument('--from', dest="fromstring", help='From date, formatted yyyy/mm/dd')
 parser_report.add_argument('--to', dest="tostring", help='To date, formatted yyyy/mm/dd')
+parser_report.add_argument('--yesterday', action='store_const',
+                   const=True, default=False,
+                   help='Show information for the previous day')
+parser_report.add_argument('--this-month', dest="thismonth", action='store_const',
+                   const=True, default=False,
+                   help='Show information for the current day up until today')
+parser_report.add_argument('--last-month', dest="lastmonth", action='store_const',
+                   const=True, default=False,
+                   help='Show information for the previous month')
+
 
 args = parser.parse_args()
 
