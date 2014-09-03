@@ -97,7 +97,8 @@ def commandReport(argv, config):
 
     time_entries.sort(key=lambda entry: entry.booked_on)
 
-    row_format = "{:<20} {:>2d}:{:02d} {:<50}"
+    row_format = "{:<20} {:>5} {:<50}"
+
     # Get the list of bookable hours per weekday. Default to 8 hours for each
     # workday.
     if 'bookable' in backend_config:
@@ -119,16 +120,30 @@ def commandReport(argv, config):
             print(entry.booked_on.strftime('%a %d %b %Y'))
             previous_date = entry.booked_on
 
-        total_seconds = int(entry.duration.total_seconds())
-        hours, remainder = divmod(total_seconds,60*60)
-        minutes, seconds = divmod(remainder,60)
         day_total = day_total + entry.duration
-        print(row_format.format(entry.ticket.identifier, hours, minutes, entry.description))
+        print(row_format.format(entry.ticket.identifier, formatTimedelta(entry.duration), entry.description))
 
     return
 
 def daySummary(date, total, bookable):
     return ""
+def formatTimedelta(delta):
+    total_seconds = int(delta.total_seconds())
+
+    # This is probably a rather convoluted way of handling negative delta's, but
+    # can't come up with something better right now.
+    negative = False
+    if (total_seconds < 0):
+        negative = True
+        total_seconds = total_seconds * -1
+
+    hours, remainder = divmod(total_seconds,60*60)
+    minutes, seconds = divmod(remainder,60)
+
+    if (negative):
+        hours = hours * -1
+
+    return "{:d}:{:02d}".format(hours, minutes)
 
 if len(sys.argv) == 1:
     print("Please supply a valid command.")
