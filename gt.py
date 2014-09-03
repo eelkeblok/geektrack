@@ -126,7 +126,26 @@ def commandReport(argv, config):
     return
 
 def daySummary(date, total, bookable):
-    return ""
+    bookable_today = datetime.timedelta(0, 0, 0, 0, 0, int(bookable[date.weekday()]))
+    difference = total - bookable_today
+    lineformat = "Total: {}. Bookable {}. Difference: {}"
+    difference_string = ""
+
+    # Color the difference
+    seconds_difference = difference.total_seconds()
+
+    if (seconds_difference < 0):
+        difference_string = color(1, formatTimedelta(difference))
+    elif (seconds_difference > 0):
+        difference_string = color(2, formatTimedelta(difference))
+    else:
+        difference_string = formatTimedelta(difference)
+
+    return bold(lineformat.format(
+        formatTimedelta(total),
+        formatTimedelta(bookable_today),
+        difference_string))
+
 def formatTimedelta(delta):
     total_seconds = int(delta.total_seconds())
 
@@ -144,6 +163,13 @@ def formatTimedelta(delta):
         hours = hours * -1
 
     return "{:d}:{:02d}".format(hours, minutes)
+
+# Formatting functions from http://www.darkcoding.net/software/pretty-command-line-console-output-on-unix-in-python-and-go-lang/
+def bold(msg):
+    return u'\033[1m%s\033[0m' % msg
+
+def color(this_color, string):
+    return "\033[3" + str(this_color) + "m" + string + "\033[0m"
 
 if len(sys.argv) == 1:
     print("Please supply a valid command.")
