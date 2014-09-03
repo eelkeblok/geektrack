@@ -85,7 +85,10 @@ def commandDefault(argv, config):
     return
 
 def commandReport(argv, config):
-    backend = BaseBackend.BaseBackend.getBackend(argv, config)
+    selected_backend = 'default' # This may at some point be changeable with a command line switch
+
+    backend_config = config['backend_' + selected_backend]
+    backend = BaseBackend.BaseBackend.getBackend(argv, backend_config)
     time_entries = backend.getTimeEntries(datetime.datetime.today())
 
     time_entries.sort(key=lambda entry: entry.booked_on)
