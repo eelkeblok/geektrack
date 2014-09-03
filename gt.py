@@ -123,6 +123,10 @@ def commandReport(argv, config):
         day_total = day_total + entry.duration
         print(row_format.format(entry.ticket.identifier, formatTimedelta(entry.duration), entry.description))
 
+    # Print the summary line for the last day
+    print(daySummary(previous_date, day_total, bookable))
+    print("")
+
     return
 
 def daySummary(date, total, bookable):
