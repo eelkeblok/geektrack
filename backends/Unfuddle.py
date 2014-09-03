@@ -40,14 +40,15 @@ class UnfuddleBackend(BaseBackend.BaseBackend):
 
         for project in data['groups']:
             for entry in project['time_entries']:
-                project_data = self.getProjectByName(project['title'])
-                ticket = self.getTicket(entry['ticket_id'], project_data['id'])
-                description = entry['description']
-                duration = datetime.timedelta(0, 0, 0, 0, 0, entry['hours'])
-                booked_on = datetime.datetime.strptime(entry['date'], "%Y-%m-%d")
-                time_entry = TimeEntry.TimeEntry(
-                    ticket, description, duration, booked_on)
-                time_entries.append(time_entry)
+                if entry['person_id'] == userid:
+                    project_data = self.getProjectByName(project['title'])
+                    ticket = self.getTicket(entry['ticket_id'], project_data['id'])
+                    description = entry['description']
+                    duration = datetime.timedelta(0, 0, 0, 0, 0, entry['hours'])
+                    booked_on = datetime.datetime.strptime(entry['date'], "%Y-%m-%d")
+                    time_entry = TimeEntry.TimeEntry(
+                        ticket, description, duration, booked_on)
+                    time_entries.append(time_entry)
 
         return time_entries
 
