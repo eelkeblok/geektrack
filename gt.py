@@ -1,7 +1,7 @@
 #! /usr/bin/env python3
 import configparser
 import datetime
-import pprint
+import pprint as pp
 import sys
 import urllib.parse
 
