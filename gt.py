@@ -1,4 +1,5 @@
 #! /usr/bin/env python3
+import argparse
 import configparser
 import datetime
 import pprint as pp
@@ -83,17 +84,19 @@ $ gt report --last-month --summary
 (For all multi-day options, only a single summary line for the entire period)
 """
 
-def commandDefault(argv, config):
-    print("Unknown command '" + argv[1] + "'. Please supply a valid command.")
+def commandDefault(command, args, config):
+    print("Unknown command '" + command + "'. Please supply a valid command.")
     # printHelp()
     return
 
-def commandReport(argv, config):
+def commandReport(command, args, config):
     selected_backend = 'default' # This may at some point be changeable with a command line switch
 
     backend_config = config['backend_' + selected_backend]
-    backend = BaseBackend.BaseBackend.getBackend(argv, backend_config)
-    time_entries = backend.getTimeEntries(datetime.datetime.today())
+    backend = BaseBackend.BaseBackend.getBackend(backend_config)
+
+    fromdate = todate = datetime.datetime.today()
+    time_entries = backend.getTimeEntries(fromdate, todate)
 
     time_entries.sort(key=lambda entry: entry.booked_on)
 
@@ -117,11 +120,15 @@ def commandReport(argv, config):
                 print("")
                 day_total = datetime.timedelta(0)
 
-            print(bold(entry.booked_on.strftime('%a %d %b %Y')))
+            # Only print this if we have multiple dates
+            if (fromdate != todate):
+                print(bold(entry.booked_on.strftime('%a %d %b %Y')))
             previous_date = entry.booked_on
 
         day_total = day_total + entry.duration
-        print(row_format.format(entry.ticket.identifier, formatTimedelta(entry.duration), entry.description))
+
+        if args.verbose:
+            print(row_format.format(entry.ticket.identifier, formatTimedelta(entry.duration), entry.description))
 
     # Print the summary line for the last day
     print(daySummary(previous_date, day_total, bookable))
@@ -179,6 +186,17 @@ if len(sys.argv) == 1:
     print("Please supply a valid command.")
 #     printHelp()
 
+parser = argparse.ArgumentParser(description='Record time spent in a ticketing backend and run reports')
+subparsers = parser.add_subparsers(help='sub-command help')
+
+# Create the parser for the report command
+parser_report = subparsers.add_parser('report', description='Run reports against a backend')
+parser_report.add_argument('--verbose', dest='verbose', action='store_const',
+                   const=True, default=False,
+                   help='Show details on individual time entries')
+
+args = parser.parse_args()
+
 command = sys.argv[1]
 
 commandFunction = {
@@ -188,4 +206,4 @@ commandFunction = {
 config = configparser.ConfigParser()
 config.read('settings.ini')
 
-commandFunction(sys.argv, config)
+commandFunction(command, args, config)

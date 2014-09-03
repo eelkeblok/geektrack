@@ -4,7 +4,7 @@ class BaseBackend(object):
     __metaclass__  = abc.ABCMeta
 
     @staticmethod
-    def getBackend(argv, config):
+    def getBackend(config):
         # When we support multiple backends, this needs to be changed.
         backend_type = config['type']
         backend = __import__("backends." + backend_type)
