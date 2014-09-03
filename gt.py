@@ -85,7 +85,7 @@ $ gt report --last-month --summary
 
 def commandDefault(argv, config):
     print("Unknown command '" + argv[1] + "'. Please supply a valid command.")
-#     printHelp()
+    # printHelp()
     return
 
 def commandReport(argv, config):
