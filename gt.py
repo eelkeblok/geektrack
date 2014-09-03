@@ -98,7 +98,13 @@ def commandReport(argv, config):
     time_entries.sort(key=lambda entry: entry.booked_on)
 
     row_format = "{:<20} {:>2d}:{:02d} {:<50}"
-    bookable = [4,8,8,8,8,0,0]
+    # Get the list of bookable hours per weekday. Default to 8 hours for each
+    # workday.
+    if 'bookable' in backend_config:
+        bookable = backend_config['bookable'].split(',')
+    else:
+        bookable = [8,8,8,8,8,0,0]
+
     previous_date = None
     day_total = datetime.timedelta(0)
     for entry in time_entries:
