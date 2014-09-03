@@ -96,6 +96,19 @@ def commandReport(command, args, config):
     backend = BaseBackend.BaseBackend.getBackend(backend_config)
 
     fromdate = todate = datetime.datetime.today()
+
+    if args.fromstring != None:
+        fromdate = datetime.datetime.strptime(args.fromstring, '%Y/%m/%d')
+
+    if args.tostring != None:
+        todate = datetime.datetime.strptime(args.tostring, '%Y/%m/%d')
+
+    # If todate is before fromdate, set fromdate to the same date. This is more
+    # useful than doing it the other way around, because that way we can get a
+    # single date in the past just by setting the todate
+    if todate < fromdate:
+        fromdate = todate
+
     time_entries = backend.getTimeEntries(fromdate, todate)
 
     time_entries.sort(key=lambda entry: entry.booked_on)
@@ -194,6 +207,8 @@ parser_report = subparsers.add_parser('report', description='Run reports against
 parser_report.add_argument('--verbose', dest='verbose', action='store_const',
                    const=True, default=False,
                    help='Show details on individual time entries')
+parser_report.add_argument('--from', dest="fromstring", help='From date, formatted yyyy/mm/dd')
+parser_report.add_argument('--to', dest="tostring", help='To date, formatted yyyy/mm/dd')
 
 args = parser.parse_args()
 
