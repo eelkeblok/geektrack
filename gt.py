@@ -148,6 +148,15 @@ def commandReport(command, args, config):
     else:
         bookable = [8,8,8,8,8,0,0]
 
+    grand_total = datetime.timedelta(0)
+    bookable_grand_total = datetime.timedelta(0)
+
+    # TODO: There is a very important flaw/bug in the below logic where the total
+    # bookable hours is calculated; it only determines the bookable hours for
+    # dates that actually have time entries. This needs to be canged ASAP.
+    # Probably, we need to change things around where we loop over *dates*, not
+    # time entries. We then find any time entries for that date. That also
+    # allows us to DRY the code to handle the last day down below the loop.
     previous_date = None
     day_total = datetime.timedelta(0)
     for entry in time_entries:
@@ -155,31 +164,59 @@ def commandReport(command, args, config):
 
             # If this isn't the first iteration, print the day's total
             if previous_date != None:
-                print(daySummary(previous_date, day_total, bookable))
-                print("")
+                bookable_today = bookableOnDate(previous_date, bookable)
+                difference = day_total - bookable_today
+                grand_total = grand_total + day_total
+                bookable_grand_total = bookable_grand_total + bookable_today
+
+                # Only print if we didn't get a request for just the summary
+                if not args.summary:
+                    print(summaryLine(day_total, bookable_today, difference))
+                    print("")
                 day_total = datetime.timedelta(0)
 
-            # Only print this if we have multiple dates
-            if (fromdate != todate):
+            # Only print this if we have multiple dates (and are not just
+            # building a summary)
+            if (fromdate != todate and not args.summary):
                 print(bold(entry.booked_on.strftime('%a %d %b %Y')))
             previous_date = entry.booked_on
 
         day_total = day_total + entry.duration
 
-        if args.verbose:
+        # Only print if we didn't get a request for just the summary and *did*
+        # get a request to be verbose
+        if args.verbose and not args.summary:
             print(row_format.format(entry.ticket.identifier, formatTimedelta(entry.duration), entry.description))
 
-    # Print the summary line for the last day
-    print(daySummary(previous_date, day_total, bookable))
-    print("")
+    # Handle the last date for totals and summary line.
+    # TODO: This is basically an exact copy of what happens inside the loop.
+    # Should be DRY'd up.
+    bookable_today = bookableOnDate(previous_date, bookable)
+    difference = day_total - bookable_today
+    grand_total = grand_total + day_total
+    bookable_grand_total = bookable_grand_total + bookable_today
+    if not args.summary:
+        print(summaryLine(day_total, bookable_today, difference))
+        print("")
+
+    # If there are several days, we want to display a total summary. This should
+    # be the only thing that gets printed if a summary was requested.
+    if fromdate != todate or args.summary:
+        difference = grand_total - bookable_grand_total
+        print(summaryLine(grand_total, bookable_grand_total, difference))
+        print("")
 
     return
 
-def daySummary(date, total, bookable):
-    bookable_today = datetime.timedelta(0, 0, 0, 0, 0, int(bookable[date.weekday()]))
-    difference = total - bookable_today
+def bookableOnDate(date, bookable):
+    """Return the number of bookable hours for a datetime
 
-    return summaryLine(total, bookable_today, difference)
+    :param date:     Input date
+    :type  date:     datetime.datetime
+    :param bookable: List of bookable hours per weekday (monday first)
+    :type bookable:  list of int
+    """
+    return datetime.timedelta(0, 0, 0, 0, 0, int(bookable[date.weekday()]))
 
 def summaryLine(total, bookable, difference):
     lineformat = "Total: {}. Bookable {}. Difference: {}"
@@ -249,7 +286,9 @@ parser_report.add_argument('--this-month', dest="thismonth", action='store_const
 parser_report.add_argument('--last-month', dest="lastmonth", action='store_const',
                    const=True, default=False,
                    help='Show information for the previous month')
-
+parser_report.add_argument('--summary', action='store_const',
+                   const=True, default=False,
+                   help='Show only a single summary line for the requested period')
 
 args = parser.parse_args()
 
