@@ -4,6 +4,7 @@ import calendar
 from collections import defaultdict
 import configparser
 import datetime
+import os
 import pprint as pp
 import sys
 import urllib.parse
@@ -295,7 +296,8 @@ commandFunction = {
     "report":   commandReport
 }.get(command, commandDefault)
 
+basepath = os.path.dirname(os.path.realpath(__file__))
 config = configparser.ConfigParser()
-config.read('settings.ini')
+config.read(basepath + '/settings.ini')
 
 commandFunction(command, args, config)
