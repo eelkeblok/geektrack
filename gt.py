@@ -178,6 +178,10 @@ def commandReport(command, args, config):
 def daySummary(date, total, bookable):
     bookable_today = datetime.timedelta(0, 0, 0, 0, 0, int(bookable[date.weekday()]))
     difference = total - bookable_today
+
+    return summaryLine(total, bookable_today, difference)
+
+def summaryLine(total, bookable, difference):
     lineformat = "Total: {}. Bookable {}. Difference: {}"
     difference_string = ""
 
@@ -193,8 +197,9 @@ def daySummary(date, total, bookable):
 
     return bold(lineformat.format(
         formatTimedelta(total),
-        formatTimedelta(bookable_today),
+        formatTimedelta(bookable),
         difference_string))
+
 
 def formatTimedelta(delta):
     total_seconds = int(delta.total_seconds())
