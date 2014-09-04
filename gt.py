@@ -1,6 +1,7 @@
 #! /usr/bin/env python3
 import argparse
 import calendar
+from collections import defaultdict
 import configparser
 import datetime
 import pprint as pp
@@ -135,11 +136,22 @@ def commandReport(command, args, config):
         fromdate = datetime.datetime(year, month, 1)
         todate = datetime.datetime(year, month, numdays)
 
-    time_entries = backend.getTimeEntries(fromdate, todate)
+    time_entries_list = backend.getTimeEntries(fromdate, todate)
 
-    time_entries.sort(key=lambda entry: entry.booked_on)
+    time_entries_list.sort(key=lambda entry: entry.booked_on)
 
-    row_format = "{:<20} {:>5} {:<50}"
+    # Turn this sorted list into a dictionary indexed by datetime objects.
+    time_entries = defaultdict(list)
+    key_format = '%Y-%m-%d'
+    for entry in time_entries_list:
+        # We work with a string key, because using the datetime objects
+        # themselves seems to go wrong, probably because an object representing
+        # the same date is not necessarily also the exact same object.
+        key = entry.booked_on.strftime(key_format)
+        if key not in time_entries:
+            time_entries[key] = [entry]
+        else:
+            time_entries[key].append(entry)
 
     # Get the list of bookable hours per weekday. Default to 8 hours for each
     # workday.
@@ -150,54 +162,39 @@ def commandReport(command, args, config):
 
     grand_total = datetime.timedelta(0)
     bookable_grand_total = datetime.timedelta(0)
+    row_format = "{:<20} {:>5} {:<50}"
 
-    # TODO: There is a very important flaw/bug in the below logic where the total
-    # bookable hours is calculated; it only determines the bookable hours for
-    # dates that actually have time entries. This needs to be canged ASAP.
-    # Probably, we need to change things around where we loop over *dates*, not
-    # time entries. We then find any time entries for that date. That also
-    # allows us to DRY the code to handle the last day down below the loop.
-    previous_date = None
-    day_total = datetime.timedelta(0)
-    for entry in time_entries:
-        if entry.booked_on != previous_date:
+    current_date = fromdate
+    while current_date <= todate:
+        # Date header. Only print this if we have multiple dates (and are not
+        # just building a summary)
+        if (fromdate != todate and not args.summary):
+            print(bold(current_date.strftime('%a %d %b %Y')))
 
-            # If this isn't the first iteration, print the day's total
-            if previous_date != None:
-                bookable_today = bookableOnDate(previous_date, bookable)
-                difference = day_total - bookable_today
-                grand_total = grand_total + day_total
-                bookable_grand_total = bookable_grand_total + bookable_today
+        day_total = datetime.timedelta(0)
+        key = current_date.strftime(key_format)
+        for entry in time_entries[key]:
+            day_total = day_total + entry.duration
 
-                # Only print if we didn't get a request for just the summary
-                if not args.summary:
-                    print(summaryLine(day_total, bookable_today, difference))
-                    print("")
-                day_total = datetime.timedelta(0)
+            # Print a line for the current time entry in case we were requested
+            # to be verbose (but *not* if the summary flag was also set, because
+            # we won't get date labels, in that case)
+            if args.verbose and not args.summary:
+                print(row_format.format(entry.ticket.identifier, formatTimedelta(entry.duration), entry.description))
 
-            # Only print this if we have multiple dates (and are not just
-            # building a summary)
-            if (fromdate != todate and not args.summary):
-                print(bold(entry.booked_on.strftime('%a %d %b %Y')))
-            previous_date = entry.booked_on
+        bookable_today = bookableOnDate(current_date, bookable)
+        difference = day_total - bookable_today
+        grand_total = grand_total + day_total
+        bookable_grand_total = bookable_grand_total + bookable_today
 
-        day_total = day_total + entry.duration
+        # Print a summary line for the day (but not when we got a request for
+        # just the total summary)
+        if not args.summary:
+            print(summaryLine(day_total, bookable_today, difference))
+            print("")
 
-        # Only print if we didn't get a request for just the summary and *did*
-        # get a request to be verbose
-        if args.verbose and not args.summary:
-            print(row_format.format(entry.ticket.identifier, formatTimedelta(entry.duration), entry.description))
-
-    # Handle the last date for totals and summary line.
-    # TODO: This is basically an exact copy of what happens inside the loop.
-    # Should be DRY'd up.
-    bookable_today = bookableOnDate(previous_date, bookable)
-    difference = day_total - bookable_today
-    grand_total = grand_total + day_total
-    bookable_grand_total = bookable_grand_total + bookable_today
-    if not args.summary:
-        print(summaryLine(day_total, bookable_today, difference))
-        print("")
+        # Housekeeping; increase the iterator
+        current_date = current_date + datetime.timedelta(days=1)
 
     # If there are several days, we want to display a total summary. This should
     # be the only thing that gets printed if a summary was requested.
